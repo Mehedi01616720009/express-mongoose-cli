@@ -1,9 +1,9 @@
-import fs from 'fs';
 import { v2 as cloudinary } from 'cloudinary';
 import multer, { Multer } from 'multer';
 import AppError from '../errors/AppError';
 import httpStatus from 'http-status';
 import config from '../config';
+import path from 'path';
 
 export interface ICloudinaryResponse {
     format: string;
@@ -32,6 +32,12 @@ export const sendImageToCloudinary = async (
             path,
             {
                 public_id: imageName,
+                transformation: {
+                    aspect_ratio: 1,
+                    width: 400,
+                    quality: 60,
+                    fetch_format: 'auto',
+                },
             },
             (err, result) => {
                 if (err) {
@@ -43,21 +49,6 @@ export const sendImageToCloudinary = async (
                         )
                     );
                 }
-
-                // unlink image from server
-                fs.unlink(path, err => {
-                    if (err) {
-                        console.log({
-                            success: false,
-                            message: 'Image cannot delete',
-                            errorMessages: {
-                                path: '/',
-                                message: err?.message,
-                            },
-                            stack: err,
-                        });
-                    }
-                });
 
                 resolve(result as ICloudinaryResponse);
             }
@@ -71,7 +62,8 @@ const storage = multer.diskStorage({
     },
     filename: function (req, file, cb) {
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-        cb(null, file.fieldname + '-' + uniqueSuffix);
+        const extension = path.extname(file.originalname);
+        cb(null, `${file.fieldname}-${uniqueSuffix}${extension}`);
     },
 });
 
