@@ -1,6 +1,44 @@
 import { IAuth } from './auth.interface';
 import config from '../../config';
 import { JwtPayload } from 'jsonwebtoken';
+import generateImageName from '../../utils/generateImageName';
+import path from 'path';
+import { sendImageToCloudinary } from '../../utils/sendImageToCloudinary';
+import fs from 'fs';
+
+// image upload
+const imageUpload = async (file: Express.Multer.File) => {
+    if (file?.path) {
+        // paths for original and resized images
+        const originalFilePath = file.path;
+        const resizedFilePath = path.resolve(
+            file.destination,
+            `resized-${file.filename}`
+        );
+
+        // generate image name
+        const imageName = generateImageName('userData.id');
+
+        // wait for cloudinary response
+        const image = await sendImageToCloudinary(imageName, resizedFilePath);
+
+        [originalFilePath, resizedFilePath].forEach(filePath => {
+            fs.unlink(filePath, err => {
+                if (err) {
+                    console.log({
+                        success: false,
+                        message: 'Image cannot be deleted',
+                        errorMessages: {
+                            path: '/',
+                            message: err?.message,
+                        },
+                        stack: err,
+                    });
+                }
+            });
+        });
+    }
+};
 
 // signin
 const signInFromDB = async (payload: IAuth) => {
@@ -170,6 +208,7 @@ const resetPasswordIntoDB = async (
 };
 
 export const AuthServices = {
+    imageUpload,
     signInFromDB,
     getMeFromDB,
     getNewAccessTokenByRefreshToken,
